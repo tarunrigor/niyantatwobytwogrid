@@ -110,20 +110,25 @@ const css = `
   }
   .pg-dot-btn:focus-visible { outline: 2px solid #d97706; outline-offset: 4px; }
 
-  /* Dot name label — hidden at rest, revealed on active/hover */
+  /* Dot name label — faint at rest, fully visible on hover/active */
   .pg-dot-label {
     position: absolute;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     white-space: nowrap;
     pointer-events: none;
     letter-spacing: 0.1px;
     line-height: 1.3;
-    opacity: 0;
-    transition: opacity 0.18s ease;
+    opacity: 0.35;
+    transition: opacity 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
     z-index: 20;
+    transform-origin: top center;
   }
-  .pg-dot-label.visible { opacity: 1; }
+  .pg-dot-label.visible {
+    opacity: 1;
+    background: rgba(255,255,255,0.93) !important;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.10) !important;
+  }
 
   .pg-expand-body {
     overflow: hidden;
@@ -294,8 +299,12 @@ export default function PositioningGrid() {
                     const size     = c.highlight ? 18 : 13;
                     const gridLeft = `${c.x}%`;
                     const gridTop  = `${100 - c.y}%`;
-                    const lx = c.x > 50 ? "calc(-100% - 10px)" : "calc(100% + 10px)";
-                    const ly = c.y > 50 ? "4px" : "-28px";
+                    // Always center the label horizontally on the dot so it never
+                    // crosses the vertical axis line into the wrong quadrant.
+                    // Vertically: upper-half dots (y > 50 → top < 50%) get label below;
+                    // lower-half dots (y < 50 → top > 50%) get label above.
+                    const lx = "-50%";
+                    const ly = c.y > 50 ? "14px" : "calc(-100% - 10px)";
 
                     return (
                       <div key={c.id}>
@@ -322,12 +331,11 @@ export default function PositioningGrid() {
                           style={{
                             left: gridLeft, top: gridTop,
                             transform: `translate(${lx}, ${ly})`,
-                            color: isActive ? (c.highlight ? "#92400e" : "#111827") : "#374151",
-                            background: "rgba(255,255,255,0.93)",
-                            backdropFilter: "blur(4px)",
-                            padding: "3px 8px",
+                            color: isActive ? (c.highlight ? "#92400e" : "#111827") : "#6b7280",
+                            background: lit ? "rgba(255,255,255,0.93)" : "transparent",
+                            padding: lit ? "3px 8px" : "0 4px",
                             borderRadius: "6px",
-                            boxShadow: "0 1px 6px rgba(0,0,0,0.10)",
+                            boxShadow: lit ? "0 1px 6px rgba(0,0,0,0.10)" : "none",
                           }}
                         >
                           {c.label}
