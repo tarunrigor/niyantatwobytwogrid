@@ -4,6 +4,7 @@ import { useState } from "react";
 // DATA
 // ─────────────────────────────────────────────
 type Competitor = {
+
   id: string;
   label: string;
   role: string;
@@ -83,30 +84,19 @@ const competitors: Competitor[] = [
   },
 ];
 
-const quadrantMeta = [
-  { x: "25%", y: "25%", title: "Hollow Scalability", bg: "#f8fafc" },
-  { x: "75%", y: "25%", title: "Wisdom Trap", bg: "#f8fafc" },
-  { x: "25%", y: "75%", title: "Mass-Market Irrelevance", bg: "#f8fafc" },
-  { x: "75%", y: "75%", title: "The White Space", bg: "#fffdf5", highlight: true },
-];
-
 // ─────────────────────────────────────────────
-// STYLES (injected once)
+// STYLES
 // ─────────────────────────────────────────────
 const css = `
   * { box-sizing: border-box; }
 
   @keyframes pulse-ring {
     0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.6; }
-    70%  { transform: translate(-50%,-50%) scale(2.4); opacity: 0; }
-    100% { transform: translate(-50%,-50%) scale(2.4); opacity: 0; }
+    70%  { transform: translate(-50%,-50%) scale(2.8); opacity: 0; }
+    100% { transform: translate(-50%,-50%) scale(2.8); opacity: 0; }
   }
   @keyframes slide-down {
-    from { opacity: 0; transform: translateY(-6px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes fade-up {
-    from { opacity: 0; transform: translateY(8px); }
+    from { opacity: 0; transform: translateY(-5px); }
     to   { opacity: 1; transform: translateY(0); }
   }
 
@@ -115,33 +105,29 @@ const css = `
     border-radius: 50%;
     border: none;
     cursor: pointer;
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
     outline: none;
   }
-  .pg-dot-btn:hover  { transform: translate(-50%,-50%) scale(1.4); }
-  .pg-dot-btn:focus-visible { outline: 2px solid #d97706; outline-offset: 3px; }
+  .pg-dot-btn:focus-visible { outline: 2px solid #d97706; outline-offset: 4px; }
 
-  .pg-player-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    border-radius: 8px;
-    cursor: pointer;
-    border: 1.5px solid transparent;
-    background: transparent;
-    text-align: left;
-    width: 100%;
-    transition: background 0.15s, border-color 0.15s;
-    margin-bottom: 6px;
+  /* Dot name label — hidden at rest, revealed on active/hover */
+  .pg-dot-label {
+    position: absolute;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    letter-spacing: 0.1px;
+    line-height: 1.3;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+    z-index: 20;
   }
-  .pg-player-row:hover  { background: #f9fafb; border-color: #e5e7eb; }
-  .pg-player-row.active { background: #fffbeb; border-color: #fcd34d; }
-  .pg-player-row.active-twc { background: #fffbeb; border-color: #f59e0b; }
+  .pg-dot-label.visible { opacity: 1; }
 
   .pg-expand-body {
     overflow: hidden;
-    animation: slide-down 0.22s ease;
+    animation: slide-down 0.2s ease;
   }
 
   .pg-badge {
@@ -153,26 +139,66 @@ const css = `
     font-weight: 600;
     letter-spacing: 0.5px;
     text-transform: uppercase;
-    padding: 3px 9px;
+    padding: 3px 10px;
     border-radius: 99px;
     white-space: nowrap;
   }
+
+  .pg-player-card {
+    background: #fff;
+    border-radius: 12px;
+    border: 1.5px solid #eeece9;
+    overflow: hidden;
+    transition: box-shadow 0.2s, border-color 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .pg-player-card.is-active-highlight {
+    border-color: #fbbf24;
+    box-shadow: 0 4px 20px rgba(217,119,6,0.14);
+  }
+  .pg-player-card.is-active-normal {
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+
+  /* Axis track — sits outside the grid, clean label rows */
+  .pg-axis-x {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    padding: 0 2px;
+  }
+  .pg-axis-y {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 2px 0;
+    margin-right: 14px;
+  }
+  .pg-axis-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #374151;
+    letter-spacing: 0.1px;
+    white-space: nowrap;
+  }
+  .pg-axis-label.dim { color: #9ca3af; font-weight: 500; }
 `;
 
 // ─────────────────────────────────────────────
 // COMPONENT
 // ─────────────────────────────────────────────
 export default function PositioningGrid() {
-  const [active, setActive] = useState<string>("twc");
+  const [active, setActive]     = useState<string>("twc");
   const [expanded, setExpanded] = useState<string>("twc");
-  const [hovered, setHovered] = useState<string | null>(null);
+  const [hovered, setHovered]   = useState<string | null>(null);
 
   function handleSelect(id: string) {
     setActive(id);
     setExpanded((prev) => (prev === id ? "" : id));
   }
-
-  const activeC = competitors.find((c) => c.id === active)!;
 
   return (
     <>
@@ -180,418 +206,218 @@ export default function PositioningGrid() {
       <div
         style={{
           fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif",
-          background: "#f7f6f3",
+          background: "#f5f4f1",
           minHeight: "100vh",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          padding: "56px 24px 72px",
+          padding: "48px 40px 80px",
           color: "#1c1917",
         }}
       >
 
-        {/* ── LEVEL 1: Page title ─────────────────────── */}
-        <div style={{ textAlign: "center", marginBottom: "8px" }}>
-          <span
-            style={{
-              fontSize: "11px",
-              fontWeight: 700,
-              letterSpacing: "3px",
-              textTransform: "uppercase",
-              color: "#d97706",
-            }}
-          >
+        {/* ── TITLE ──────────────────────────────────────── */}
+        <div style={{ textAlign: "center", marginBottom: "40px" }}>
+          <p style={{ margin: "0 0 8px", fontSize: "10px", fontWeight: 700, letterSpacing: "3.5px", textTransform: "uppercase", color: "#d97706" }}>
             Competitive Positioning
-          </span>
-          <h1
-            style={{
-              fontSize: "clamp(24px, 3vw, 34px)",
-              fontWeight: 300,
-              margin: "8px 0 6px",
-              color: "#1c1917",
-              letterSpacing: "-0.8px",
-            }}
-          >
+          </p>
+          <h1 style={{ fontSize: "clamp(20px, 2.6vw, 28px)", fontWeight: 300, margin: "0 0 8px", color: "#111827", letterSpacing: "-0.5px" }}>
             The Why Company
           </h1>
-          <p
-            style={{
-              fontSize: "13px",
-              color: "#78716c",
-              margin: 0,
-              letterSpacing: "0.5px",
-            }}
-          >
-            Curriculum Approach &nbsp;×&nbsp; Delivery Infrastructure
+          <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>
+            Where does each player sit on curriculum approach and delivery scale?
           </p>
         </div>
 
-        {/* ── LEVEL 2: Axis legend ─────────────────────── */}
-        <div
-          style={{
-            display: "flex",
-            gap: "24px",
-            flexWrap: "wrap",
-            justifyContent: "center",
-            marginTop: "24px",
-            marginBottom: "44px",
-            padding: "14px 24px",
-            background: "#fff",
-            borderRadius: "10px",
-            border: "1px solid #e7e5e4",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-            maxWidth: "600px",
-          }}
-        >
-          <div style={{ fontSize: "12px", color: "#44403c", lineHeight: "1.7" }}>
-            <span style={{ fontWeight: 700, color: "#1c1917" }}>X-axis → </span>
-            Curriculum approach:{" "}
-            <em style={{ color: "#78716c" }}>legacy subject-delivery</em> to{" "}
-            <em style={{ color: "#1c1917", fontStyle: "normal", fontWeight: 600 }}>holistic NEP-aligned</em>
-          </div>
-          <div style={{ fontSize: "12px", color: "#44403c", lineHeight: "1.7" }}>
-            <span style={{ fontWeight: 700, color: "#1c1917" }}>Y-axis ↑ </span>
-            Delivery infrastructure:{" "}
-            <em style={{ color: "#78716c" }}>person-dependent</em> to{" "}
-            <em style={{ color: "#1c1917", fontStyle: "normal", fontWeight: 600 }}>AI-native & systemised</em>
-          </div>
-        </div>
+        {/* ── MAIN ROW: [Y-axis + Grid + X-axis]  |  [All Players] ── */}
+        <div style={{ display: "flex", gap: "40px", alignItems: "flex-start", width: "100%", maxWidth: "1080px", flexWrap: "wrap", justifyContent: "center" }}>
 
-        {/* ── LEVEL 3: Main grid + player list ────────── */}
-        <div
-          style={{
-            display: "flex",
-            gap: "40px",
-            alignItems: "flex-start",
-            width: "100%",
-            maxWidth: "1000px",
-            flexWrap: "wrap",
-            justifyContent: "center",
-          }}
-        >
+          {/* LEFT: grid frame */}
+          <div style={{ flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "stretch" }}>
 
-          {/* LEFT: 2×2 Grid ───────────────────────────── */}
-          <div style={{ position: "relative", flex: "0 0 auto" }}>
-
-            {/* Y-axis labels */}
-            <div style={{ position: "absolute", left: "-64px", top: "50%", transform: "translateY(-50%) rotate(-90deg)", fontSize: "10px", letterSpacing: "2px", textTransform: "uppercase", color: "#a8a29e", whiteSpace: "nowrap" }}>
-              Delivery Infrastructure
-            </div>
-            <div style={{ position: "absolute", left: "-4px", top: 0, transform: "translateX(-100%) translateY(2px)", fontSize: "10px", color: "#a8a29e", whiteSpace: "nowrap", textAlign: "right" }}>
-              AI-Native ↑
-            </div>
-            <div style={{ position: "absolute", left: "-4px", bottom: 0, transform: "translateX(-100%) translateY(-2px)", fontSize: "10px", color: "#a8a29e", whiteSpace: "nowrap", textAlign: "right" }}>
-              ↓ Human-Only
-            </div>
-
-            {/* Grid canvas */}
-            <div
-              style={{
-                position: "relative",
-                width: "460px",
-                height: "460px",
-                maxWidth: "min(460px, 82vw)",
-                maxHeight: "min(460px, 82vw)",
-                borderRadius: "12px",
-                overflow: "hidden",
-                border: "1px solid #e7e5e4",
-                boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-              }}
-            >
-              {/* Quadrant fills */}
-              <div style={{ position: "absolute", inset: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: "1px", background: "#e7e5e4" }}>
-                {["#fafaf8", "#fafaf8", "#fafaf8", "#fffdf5"].map((bg, i) => (
-                  <div key={i} style={{ background: bg }} />
-                ))}
+              {/* Y-axis column */}
+              <div className="pg-axis-y" style={{ height: "420px", maxHeight: "min(420px, 80vw)" }}>
+                <span className="pg-axis-label">AI-Native &nbsp;↑</span>
+                <span style={{ fontSize: "9px", fontWeight: 700, letterSpacing: "2.5px", textTransform: "uppercase", color: "#d1cdc8", transform: "rotate(-90deg)", whiteSpace: "nowrap", display: "block" }}>
+                  Delivery
+                </span>
+                <span className="pg-axis-label">↓ &nbsp;Human-Only</span>
               </div>
 
-              {/* Axis dividers */}
-              <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: "1px", background: "#e0ddd9", transform: "translateX(-50%)" }} />
-              <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: "1px", background: "#e0ddd9", transform: "translateY(-50%)" }} />
-
-              {/* Quadrant names */}
-              {quadrantMeta.map((q, i) => (
+              {/* Grid + X-axis stacked */}
+              <div>
+                {/* ── GRID CANVAS ── */}
                 <div
-                  key={i}
                   style={{
-                    position: "absolute",
-                    left: q.x,
-                    top: q.y,
-                    transform: "translate(-50%, -50%)",
-                    fontSize: "10px",
-                    fontWeight: q.highlight ? 700 : 500,
-                    color: q.highlight ? "#b45309" : "#d6d3d1",
-                    textAlign: "center",
-                    letterSpacing: "0.8px",
-                    textTransform: "uppercase",
-                    lineHeight: "1.6",
-                    pointerEvents: "none",
-                    whiteSpace: "pre-line",
+                    position: "relative",
+                    width: "420px",
+                    height: "420px",
+                    maxWidth: "min(420px, 80vw)",
+                    maxHeight: "min(420px, 80vw)",
+                    borderRadius: "14px",
+                    overflow: "hidden",
+                    border: "1px solid #ddd8d2",
+                    boxShadow: "0 8px 48px rgba(0,0,0,0.11), 0 1px 4px rgba(0,0,0,0.05)",
+                    background: "#fff",
                   }}
                 >
-                  {q.title.replace(" ", "\n")}
-                </div>
-              ))}
+                  {/* Quadrant fills */}
+                  <div style={{ position: "absolute", left: 0,     top: 0,     width: "50%", height: "50%", background: "#f9fafb" }} />
+                  <div style={{ position: "absolute", left: "50%", top: 0,     width: "50%", height: "50%", background: "#fffdf4" }} />
+                  <div style={{ position: "absolute", left: 0,     top: "50%", width: "50%", height: "50%", background: "#f9fafb" }} />
+                  <div style={{ position: "absolute", left: "50%", top: "50%", width: "50%", height: "50%", background: "#fafaf8" }} />
 
-              {/* Dots */}
+                  {/* Axis lines */}
+                  <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: "1px", background: "#e5e1db", transform: "translateX(-50%)", zIndex: 1 }} />
+                  <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: "1px", background: "#e5e1db", transform: "translateY(-50%)", zIndex: 1 }} />
+
+                  {/* Quadrant labels — top-left corner of each quadrant, clear of dots */}
+                  <div style={{ position: "absolute", left: "8px", top: "8px", fontSize: "8px", fontWeight: 600, color: "#d1cdc7", letterSpacing: "1.5px", textTransform: "uppercase", lineHeight: "1.7", pointerEvents: "none", userSelect: "none", zIndex: 2 }}>
+                    Hollow<br/>Scalability
+                  </div>
+                  <div style={{ position: "absolute", left: "calc(50% + 8px)", top: "8px", fontSize: "8px", fontWeight: 800, color: "#b45309", letterSpacing: "1.5px", textTransform: "uppercase", lineHeight: "1.7", pointerEvents: "none", userSelect: "none", zIndex: 2 }}>
+                    The White<br/>Space ✦
+                  </div>
+                  <div style={{ position: "absolute", left: "8px", top: "calc(50% + 8px)", fontSize: "8px", fontWeight: 600, color: "#d1cdc7", letterSpacing: "1.5px", textTransform: "uppercase", lineHeight: "1.7", pointerEvents: "none", userSelect: "none", zIndex: 2 }}>
+                    Mass-Market<br/>Irrelevance
+                  </div>
+                  <div style={{ position: "absolute", left: "calc(50% + 8px)", top: "calc(50% + 8px)", fontSize: "8px", fontWeight: 600, color: "#d1cdc7", letterSpacing: "1.5px", textTransform: "uppercase", lineHeight: "1.7", pointerEvents: "none", userSelect: "none", zIndex: 2 }}>
+                    Wisdom<br/>Trap
+                  </div>
+
+                  {/* Dots + hover labels */}
+                  {competitors.map((c) => {
+                    const isActive = active === c.id;
+                    const isHov    = hovered === c.id;
+                    const lit      = isActive || isHov;
+                    const size     = c.highlight ? 18 : 13;
+                    const gridLeft = `${c.x}%`;
+                    const gridTop  = `${100 - c.y}%`;
+                    const lx = c.x > 50 ? "calc(-100% - 10px)" : "calc(100% + 10px)";
+                    const ly = c.y > 50 ? "4px" : "-28px";
+
+                    return (
+                      <div key={c.id}>
+                        {c.highlight && (
+                          <div style={{ position: "absolute", left: gridLeft, top: gridTop, width: `${size}px`, height: `${size}px`, borderRadius: "50%", border: "1.5px solid #d97706", animation: "pulse-ring 2.4s ease-out infinite", pointerEvents: "none", zIndex: 3 }} />
+                        )}
+                        <button
+                          className="pg-dot-btn"
+                          onClick={() => handleSelect(c.id)}
+                          onMouseEnter={() => setHovered(c.id)}
+                          onMouseLeave={() => setHovered(null)}
+                          aria-label={`Select ${c.label}`}
+                          style={{
+                            left: gridLeft, top: gridTop,
+                            width: `${size}px`, height: `${size}px`,
+                            transform: `translate(-50%, -50%) scale(${lit ? 1.45 : 1})`,
+                            background: lit ? c.dotColor : c.highlight ? c.dotColor : "#b8c1cc",
+                            boxShadow: lit ? (c.highlight ? "0 0 0 5px rgba(251,191,36,0.35), 0 0 22px rgba(217,119,6,0.45)" : "0 0 0 4px rgba(148,163,184,0.3)") : "none",
+                            zIndex: 10,
+                          }}
+                        />
+                        <div
+                          className={`pg-dot-label${lit ? " visible" : ""}`}
+                          style={{
+                            left: gridLeft, top: gridTop,
+                            transform: `translate(${lx}, ${ly})`,
+                            color: isActive ? (c.highlight ? "#92400e" : "#111827") : "#374151",
+                            background: "rgba(255,255,255,0.93)",
+                            backdropFilter: "blur(4px)",
+                            padding: "3px 8px",
+                            borderRadius: "6px",
+                            boxShadow: "0 1px 6px rgba(0,0,0,0.10)",
+                          }}
+                        >
+                          {c.label}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* X-axis row */}
+                <div className="pg-axis-x" style={{ width: "420px", maxWidth: "min(420px, 80vw)" }}>
+                  <span className="pg-axis-label">← Legacy</span>
+                  <span className="pg-axis-label dim" style={{ fontSize: "9px", letterSpacing: "2px", textTransform: "uppercase" }}>Curriculum</span>
+                  <span className="pg-axis-label">NEP Future-Aligned →</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT: All Players panel */}
+          <div style={{ flex: "1 1 260px", minWidth: "240px", maxWidth: "360px" }}>
+            <p style={{ margin: "0 0 14px", fontSize: "9px", fontWeight: 700, letterSpacing: "3px", textTransform: "uppercase", color: "#c4bfba" }}>
+              All Players — click to expand
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {competitors.map((c) => {
                 const isActive = active === c.id;
-                const isHov = hovered === c.id;
-                const size = c.highlight ? 22 : 16;
+                const isOpen   = expanded === c.id;
+                const cls = `pg-player-card${isActive ? (c.highlight ? " is-active-highlight" : " is-active-normal") : ""}`;
+
                 return (
-                  <div key={c.id}>
-                    {c.highlight && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          left: `${c.x}%`,
-                          top: `${100 - c.y}%`,
-                          width: `${size}px`,
-                          height: `${size}px`,
-                          borderRadius: "50%",
-                          border: "2px solid #d97706",
-                          animation: "pulse-ring 2.2s ease-out infinite",
-                          pointerEvents: "none",
-                        }}
-                      />
-                    )}
+                  <div key={c.id} className={cls}>
+
+                    {/* Header */}
                     <button
-                      className="pg-dot-btn"
                       onClick={() => handleSelect(c.id)}
                       onMouseEnter={() => setHovered(c.id)}
                       onMouseLeave={() => setHovered(null)}
-                      aria-label={`Select ${c.label}`}
-                      style={{
-                        left: `${c.x}%`,
-                        top: `${100 - c.y}%`,
-                        width: `${size}px`,
-                        height: `${size}px`,
-                        transform: `translate(-50%, -50%) scale(${isActive || isHov ? 1.4 : 1})`,
-                        background: isActive || isHov ? c.dotColor : c.highlight ? c.dotColor : "#cbd5e1",
-                        boxShadow: isActive
-                          ? c.highlight
-                            ? "0 0 0 4px #fde68a, 0 0 16px rgba(217,119,6,0.35)"
-                            : "0 0 0 3px #e2e8f0"
-                          : "none",
-                        zIndex: 10,
-                      }}
-                    />
+                      style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", padding: "11px 14px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
+                    >
+                      <span style={{ fontSize: "16px", lineHeight: 1, flexShrink: 0, opacity: isActive ? 1 : 0.4, transition: "opacity 0.18s" }}>
+                        {c.icon}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: "12px", fontWeight: 600, color: isActive ? (c.highlight ? "#92400e" : "#111827") : "#6b7280", transition: "color 0.18s", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {c.label}
+                        </div>
+                        <div style={{ fontSize: "10px", color: "#c4bfba", marginTop: "1px" }}>
+                          {c.role}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: "11px", color: "#d1cdc8", transform: isOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s", flexShrink: 0 }}>
+                        ▾
+                      </span>
+                    </button>
+
+                    {/* Badge + summary (collapsed) */}
+                    {!isOpen && (
+                      <div style={{ padding: "0 14px 10px 38px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                        <span className="pg-badge" style={{ color: c.tagColor, background: c.tagBg, opacity: isActive ? 1 : 0.7, fontSize: "9px", padding: "2px 7px" }}>
+                          {c.highlight ? "✦" : "⚠"} {c.tagLabel}
+                        </span>
+                        <span style={{ fontSize: "11px", color: "#b0acaa", fontStyle: "italic" }}>{c.summary}</span>
+                      </div>
+                    )}
+
+                    {/* Expanded body */}
+                    {isOpen && (
+                      <div className="pg-expand-body" style={{ padding: "0 14px 14px", borderTop: "1px solid #f3f1ef" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 0 10px" }}>
+                          <span className="pg-badge" style={{ color: c.tagColor, background: c.tagBg, fontSize: "9px", padding: "2px 7px" }}>
+                            {c.highlight ? "✦" : "⚠"} {c.tagLabel}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: "11.5px", lineHeight: "1.85", color: "#57534e", margin: 0 }}>
+                          {c.description}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 );
               })}
-
-              {/* Dot labels */}
-              {competitors.map((c) => (
-                <div
-                  key={`lbl-${c.id}`}
-                  style={{
-                    position: "absolute",
-                    left: `${c.x}%`,
-                    top: `${100 - c.y}%`,
-                    transform: `translate(${c.x > 50 ? "-108%" : "18px"}, -50%)`,
-                    fontSize: "10px",
-                    fontWeight: c.highlight ? 700 : 500,
-                    color: active === c.id
-                      ? c.highlight ? "#b45309" : "#44403c"
-                      : hovered === c.id ? "#78716c" : "#c7c3be",
-                    whiteSpace: "nowrap",
-                    transition: "color 0.15s",
-                    pointerEvents: "none",
-                    letterSpacing: "0.2px",
-                  }}
-                >
-                  {c.label}
-                </div>
-              ))}
             </div>
 
-            {/* X-axis labels */}
-            <div style={{ textAlign: "center", marginTop: "12px", fontSize: "10px", letterSpacing: "2px", textTransform: "uppercase", color: "#a8a29e" }}>
-              Holistic · NEP-Future Aligned
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", fontSize: "10px", color: "#c7c3be" }}>
-              <span>← Legacy / Subject-Delivery</span>
-              <span>Future-Ready →</span>
-            </div>
-          </div>
-
-          {/* RIGHT: Player cards ──────────────────────── */}
-          <div style={{ flex: "1 1 260px", minWidth: "240px", maxWidth: "340px" }}>
-
-            {/* Section label */}
-            <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "3px", textTransform: "uppercase", color: "#a8a29e", marginBottom: "12px" }}>
-              All Players &nbsp;— click to expand
-            </div>
-
-            {competitors.map((c) => {
-              const isActive = active === c.id;
-              const isOpen = expanded === c.id;
-
-              return (
-                <div
-                  key={c.id}
-                  style={{
-                    background: "#fff",
-                    border: `1.5px solid ${isActive ? (c.highlight ? "#fcd34d" : "#e2e8f0") : "#f0eeec"}`,
-                    borderRadius: "10px",
-                    marginBottom: "8px",
-                    overflow: "hidden",
-                    boxShadow: isActive ? "0 2px 10px rgba(0,0,0,0.07)" : "0 1px 3px rgba(0,0,0,0.03)",
-                    transition: "box-shadow 0.18s, border-color 0.18s",
-                  }}
-                >
-                  {/* ── Card header (always visible, pre-cognitive) ── */}
-                  <button
-                    onClick={() => handleSelect(c.id)}
-                    onMouseEnter={() => setHovered(c.id)}
-                    onMouseLeave={() => setHovered(null)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      width: "100%",
-                      padding: "13px 16px",
-                      background: "transparent",
-                      border: "none",
-                      cursor: "pointer",
-                      textAlign: "left",
-                    }}
-                  >
-                    {/* Icon — pre-cognitive: you know the archetype before reading the name */}
-                    <span
-                      style={{
-                        fontSize: "18px",
-                        lineHeight: 1,
-                        flexShrink: 0,
-                        opacity: isActive ? 1 : 0.55,
-                        transition: "opacity 0.15s",
-                      }}
-                    >
-                      {c.icon}
-                    </span>
-
-                    {/* Name + role */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontSize: "13px",
-                          fontWeight: 600,
-                          color: isActive ? (c.highlight ? "#b45309" : "#1c1917") : "#57534e",
-                          transition: "color 0.15s",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {c.label}
-                      </div>
-                      <div style={{ fontSize: "11px", color: "#a8a29e", marginTop: "1px" }}>
-                        {c.role}
-                      </div>
-                    </div>
-
-                    {/* Badge — pre-cognitive: weakness / strength at a glance */}
-                    <span
-                      className="pg-badge"
-                      style={{
-                        color: c.tagColor,
-                        background: c.tagBg,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {c.highlight ? "✦" : "⚠"} {c.tagLabel}
-                    </span>
-
-                    {/* Chevron */}
-                    <span
-                      style={{
-                        fontSize: "12px",
-                        color: "#c7c3be",
-                        transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-                        transition: "transform 0.2s",
-                        flexShrink: 0,
-                      }}
-                    >
-                      ▾
-                    </span>
-                  </button>
-
-                  {/* ── Summary line (visible when collapsed, below header) ── */}
-                  {!isOpen && (
-                    <div
-                      style={{
-                        padding: "0 16px 12px 48px",
-                        fontSize: "12px",
-                        color: "#a8a29e",
-                        fontStyle: "italic",
-                      }}
-                    >
-                      {c.summary}
-                    </div>
-                  )}
-
-                  {/* ── Expanded body ── */}
-                  {isOpen && (
-                    <div
-                      className="pg-expand-body"
-                      style={{
-                        padding: "0 18px 16px 18px",
-                        borderTop: "1px solid #f5f4f2",
-                      }}
-                    >
-                      {/* Dot on grid context */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          padding: "10px 0 14px",
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: "10px",
-                            height: "10px",
-                            borderRadius: "50%",
-                            background: c.dotColor,
-                            flexShrink: 0,
-                          }}
-                        />
-                        <span style={{ fontSize: "11px", color: "#a8a29e" }}>
-                          Positioned in the grid at ({c.x}% across, {c.y}% up)
-                        </span>
-                      </div>
-
-                      {/* Full description */}
-                      <p
-                        style={{
-                          fontSize: "13px",
-                          lineHeight: "1.85",
-                          color: "#57534e",
-                          margin: 0,
-                        }}
-                      >
-                        {c.description}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Footer affordance hint */}
-            <p
-              style={{
-                marginTop: "16px",
-                fontSize: "11px",
-                color: "#c7c3be",
-                textAlign: "center",
-                letterSpacing: "0.5px",
-              }}
-            >
-              Click a dot on the grid or a card above to explore
+            <p style={{ marginTop: "16px", fontSize: "10px", color: "#d1cdc8", letterSpacing: "0.3px" }}>
+              Hover a dot · click a card to read more
             </p>
           </div>
+
         </div>
       </div>
     </>
